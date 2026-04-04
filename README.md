@@ -1,7 +1,7 @@
 # Whispr
 
 <p align="center">
-  <img src="Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png?v=2" width="128" alt="Whispr icon">
+  <img src="https://raw.githubusercontent.com/mossein/Whispr/82d6f3bc3899ef1105c1088a291cf06a1adbccd2/Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="128" alt="Whispr icon">
 </p>
 
 A lightweight macOS menubar app for voice-to-text. Hold a key, speak, release - your words are transcribed and pasted instantly.
