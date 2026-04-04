@@ -2,67 +2,50 @@ import Cocoa
 import CoreGraphics
 
 final class KeyMonitor {
-    private var eventTap: CFMachPort?
-    private var runLoopSource: CFRunLoopSource?
+    private var flagsMonitor: Any?
+    private var isKeyDown = false
 
     var onRightCommandDown: (() -> Void)?
     var onRightCommandUp: (() -> Void)?
 
-    private static let rightCommandKeyCode: Int64 = 0x36
+    var triggerKeyCode: Int64 = 0x36
 
     func start() {
-        let eventMask = CGEventMask(1 << CGEventType.flagsChanged.rawValue)
-
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .listenOnly,
-            eventsOfInterest: eventMask,
-            callback: KeyMonitor.eventCallback,
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
-        ) else {
-            print("[Whispr] Failed to create event tap. Check Accessibility permissions.")
-            return
+        // Use both local and global monitors for full coverage
+        flagsMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleFlags(event)
         }
 
-        eventTap = tap
-        runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
-        CGEvent.tapEnable(tap: tap, enable: true)
-        print("[Whispr] Key monitor started")
+        // Also monitor locally (when our own windows are focused)
+        NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.handleFlags(event)
+            return event
+        }
+
+        NSLog("[Whispr] Key monitor started (NSEvent)")
+    }
+
+    private func handleFlags(_ event: NSEvent) {
+        let keyCode = Int64(event.keyCode)
+        guard keyCode == triggerKeyCode else { return }
+
+        let commandDown = event.modifierFlags.contains(.command)
+
+        if commandDown && !isKeyDown {
+            isKeyDown = true
+            NSLog("[Whispr] Right Cmd DOWN")
+            onRightCommandDown?()
+        } else if !commandDown && isKeyDown {
+            isKeyDown = false
+            NSLog("[Whispr] Right Cmd UP")
+            onRightCommandUp?()
+        }
     }
 
     func stop() {
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
+        if let monitor = flagsMonitor {
+            NSEvent.removeMonitor(monitor)
+            flagsMonitor = nil
         }
-        if let source = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
-        }
-        eventTap = nil
-        runLoopSource = nil
-    }
-
-    private static let eventCallback: CGEventTapCallBack = { _, type, event, userInfo in
-        guard let userInfo = userInfo else { return Unmanaged.passUnretained(event) }
-        let monitor = Unmanaged<KeyMonitor>.fromOpaque(userInfo).takeUnretainedValue()
-
-        if type == .flagsChanged {
-            let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-            if keyCode == KeyMonitor.rightCommandKeyCode {
-                let flags = event.flags
-                let commandDown = flags.contains(.maskCommand)
-                print("[Whispr] Right Cmd \(commandDown ? "DOWN" : "UP")")
-                DispatchQueue.main.async {
-                    if commandDown {
-                        monitor.onRightCommandDown?()
-                    } else {
-                        monitor.onRightCommandUp?()
-                    }
-                }
-            }
-        }
-
-        return Unmanaged.passUnretained(event)
     }
 }

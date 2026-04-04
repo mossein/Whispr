@@ -7,14 +7,20 @@
     <key>CFBundleIdentifier</key>
     <string>com.whispr.app</string>
     <key>CFBundleVersion</key>
-    <string>1.0</string>
+    <string>1</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>1.0.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleExecutable</key>
+    <string>Whispr</string>
     <key>LSUIElement</key>
     <true/>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Whispr needs microphone access to transcribe your speech.</string>
     <key>NSAccessibilityUsageDescription</key>
-    <string>Whispr needs accessibility access to detect the Command key and paste transcribed text.</string>
+    <string>Whispr needs accessibility access to paste transcribed text into your apps.</string>
 </dict>
 </plist>

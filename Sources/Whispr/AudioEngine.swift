@@ -31,7 +31,7 @@ final class AudioEngine {
             throw AudioEngineError.converterFailed
         }
 
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
             guard let self = self else { return }
 
             let frameCount = AVAudioFrameCount(
@@ -52,7 +52,7 @@ final class AudioEngine {
             // Calculate RMS for waveform
             var rms: Float = 0
             vDSP_rmsqv(samples, 1, &rms, vDSP_Length(samples.count))
-            let level = CGFloat(min(rms * 8, 1.0))
+            let level = CGFloat(min(rms * 12, 1.0))
 
             self.lock.lock()
             self.audioSamples.append(contentsOf: samples)

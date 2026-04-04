@@ -10,18 +10,21 @@ enum PasteService {
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
 
-        // Small delay then simulate Cmd+V
+        // Try to simulate Cmd+V
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            simulateCmdV()
+            if AXIsProcessTrusted() {
+                simulateCmdV()
+            } else {
+                NSLog("[Whispr] No accessibility - text copied to clipboard only")
+            }
         }
     }
 
     private static func simulateCmdV() {
         let vKeyCode: CGKeyCode = 9
 
-        guard let source = CGEventSource(stateID: .hidSystemState) else { return }
-
-        guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: true),
+        guard let source = CGEventSource(stateID: .hidSystemState),
+              let keyDown = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: true),
               let keyUp = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: false) else { return }
 
         keyDown.flags = .maskCommand

@@ -3,8 +3,19 @@ import AppKit
 
 @main
 struct WhisprApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var appState = AppState.shared
+
+    init() {
+        NSApp?.setActivationPolicy(.accessory)
+
+        let trusted = AXIsProcessTrusted()
+        if !trusted {
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
+            AXIsProcessTrustedWithOptions(options)
+        }
+
+        _ = AppCoordinator.shared
+    }
 
     var body: some Scene {
         MenuBarExtra {
@@ -16,55 +27,25 @@ struct WhisprApp: App {
     }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
-        print("[Whispr] App launched")
-
-        // Check accessibility permission
-        let trusted = AXIsProcessTrusted()
-        print("[Whispr] Accessibility trusted: \(trusted)")
-        if !trusted {
-            print("[Whispr] Requesting accessibility access...")
-            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-            AXIsProcessTrustedWithOptions(options)
-        }
-
-        // Force coordinator init
-        _ = AppCoordinator.shared
-        print("[Whispr] Coordinator initialized")
-    }
-}
-
 struct MenuBarView: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if appState.isModelLoading {
-                Text(appState.modelLoadProgress)
-                    .font(.caption)
-            } else if appState.isModelLoaded {
-                Text("Ready - Hold Right \u{2318} to speak")
-                    .font(.caption)
-            } else {
-                Text("Model not loaded")
-                    .font(.caption)
-            }
-
-            if let error = appState.lastError {
-                Divider()
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-            }
-
-            Divider()
-
-            Button("Quit Whispr") {
-                NSApplication.shared.terminate(nil)
-            }
-            .keyboardShortcut("q")
+        if appState.isModelLoading {
+            Text(appState.modelLoadProgress)
+        } else if appState.isModelLoaded {
+            Text("Ready - Hold \(Settings.shared.triggerKeyName)")
+        } else {
+            Text("Loading...")
         }
+
+        if let error = appState.lastError {
+            Divider()
+            Text(error).foregroundStyle(.red)
+        }
+
+        Divider()
+        Button("Quit") { NSApp?.terminate(nil) }
+            .keyboardShortcut("q")
     }
 }

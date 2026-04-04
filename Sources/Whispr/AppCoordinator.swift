@@ -4,22 +4,18 @@ import AppKit
 final class AppCoordinator {
     static let shared = AppCoordinator()
 
-    private let keyMonitor = KeyMonitor()
+    let keyMonitor = KeyMonitor()
     private let audioEngine = AudioEngine()
-    private let transcriber = Transcriber()
+    let transcriber = Transcriber()
     private let popup = PopupPanel()
     private let appState = AppState.shared
+    private let onboardingWindow = OnboardingWindow()
 
     private init() {
         setup()
     }
 
     private func setup() {
-        // Load model on launch
-        Task {
-            await transcriber.loadModel()
-        }
-
         // Wire key monitor
         keyMonitor.onRightCommandDown = { [weak self] in
             self?.startRecording()
@@ -29,25 +25,43 @@ final class AppCoordinator {
         }
 
         // Wire audio levels to app state
-        audioEngine.onAudioLevel = { [weak self] levels in
+        audioEngine.onAudioLevel = { [weak self] (levels: [CGFloat]) in
             self?.appState.audioLevels = levels
         }
 
-        // Start listening for the hotkey
+        // Update key code from settings and start monitor
+        keyMonitor.triggerKeyCode = Int64(Settings.shared.triggerKeyCode)
         keyMonitor.start()
+
+        // Always load model on launch
+        Task {
+            await transcriber.loadModel()
+        }
+    }
+
+    func updateTriggerKey() {
+        keyMonitor.triggerKeyCode = Int64(Settings.shared.triggerKeyCode)
+    }
+
+    func showOnboarding() {
+        onboardingWindow.show {
+            // Onboarding completed, update key binding
+            self.updateTriggerKey()
+        }
     }
 
     private func startRecording() {
-        guard appState.isModelLoaded, !appState.isRecording else { return }
+        guard !appState.isRecording else { return }
         appState.isRecording = true
         appState.transcribedText = ""
+        NSLog("[Whispr] Starting recording (model loaded: %@)", appState.isModelLoaded ? "true" : "false")
 
         popup.show()
 
         do {
             try audioEngine.start()
         } catch {
-            print("[Whispr] Failed to start audio: \(error)")
+            NSLog("[Whispr] Failed to start audio: %@", error.localizedDescription)
             appState.isRecording = false
             popup.dismiss()
         }
@@ -67,9 +81,14 @@ final class AppCoordinator {
 
         // Transcribe the full recording and paste
         Task {
+            if !appState.isModelLoaded {
+                NSLog("[Whispr] Model not loaded yet, skipping transcription")
+                return
+            }
             let text = await transcriber.transcribe(samples: samples)
-            guard !text.isEmpty else { return }
+            NSLog("[Whispr] Transcribed: %@", text)
             await MainActor.run {
+                appState.transcribedText = text
                 PasteService.paste(text: text)
             }
         }

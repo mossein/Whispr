@@ -8,39 +8,55 @@ final class Transcriber {
     func loadModel() async {
         await MainActor.run {
             appState.isModelLoading = true
-            appState.modelLoadProgress = "Downloading model (first launch only)..."
+            appState.modelLoadProgress = "Downloading model..."
         }
 
+        let modelName = Settings.shared.modelName
+        NSLog("[Whispr] Loading model: %@", modelName)
+
         do {
-            let config = WhisperKitConfig(model: "large-v3")
+            let config = WhisperKitConfig(model: modelName)
             let kit = try await WhisperKit(config)
             whisperKit = kit
             await MainActor.run {
                 appState.isModelLoaded = true
                 appState.isModelLoading = false
                 appState.modelLoadProgress = ""
+                appState.lastError = nil
             }
-            print("[Whispr] Model loaded successfully")
+            NSLog("[Whispr] Model loaded successfully")
         } catch {
             await MainActor.run {
                 appState.isModelLoading = false
-                appState.lastError = "Failed to load model: \(error.localizedDescription)"
+                appState.lastError = "Failed to load model: \(error.localizedDescription)\nError: \(error)"
             }
-            print("[Whispr] Model load error: \(error)")
+            NSLog("[Whispr] Model load error: %@", "\(error)")
         }
     }
 
     func transcribe(samples: [Float]) async -> String {
-        guard let kit = whisperKit else { return "" }
-        guard !samples.isEmpty else { return "" }
+        guard let kit = whisperKit else {
+            NSLog("[Whispr] Transcribe called but whisperKit is nil")
+            return ""
+        }
+        guard !samples.isEmpty else {
+            NSLog("[Whispr] Transcribe called with empty samples")
+            return ""
+        }
+
+        NSLog("[Whispr] Transcribing %d samples (%.1fs of audio)", samples.count, Double(samples.count) / 16000.0)
 
         do {
-            let results = try await kit.transcribe(audioArray: samples)
+            let options = DecodingOptions(
+                chunkingStrategy: .none
+            )
+            let results = try await kit.transcribe(audioArray: samples, decodeOptions: options)
             let text = results.map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .joined(separator: " ")
+            NSLog("[Whispr] Transcription result: '%@'", text)
             return text
         } catch {
-            print("[Whispr] Transcription error: \(error)")
+            NSLog("[Whispr] Transcription error: %@", "\(error)")
             return ""
         }
     }
