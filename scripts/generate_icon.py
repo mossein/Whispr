@@ -33,7 +33,7 @@ def generate_icon():
     cx, cy = SIZE // 2, SIZE // 2 - 20
 
     # Waveform bars - 7 bars centered
-    bar_color = (100, 140, 255, 255)  # Blue
+    bar_color = (255, 255, 255, 255)  # White
     bar_width = 36
     bar_gap = 18
     bar_heights = [0.3, 0.55, 0.85, 1.0, 0.85, 0.55, 0.3]
@@ -85,7 +85,7 @@ def generate_icon():
     )
 
     # Save at multiple sizes
-    output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Resources', 'AppIcon.appiconset')
+    output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Resources', 'Assets.xcassets', 'AppIcon.appiconset')
 
     sizes = {
         'icon_16x16.png': 16,
