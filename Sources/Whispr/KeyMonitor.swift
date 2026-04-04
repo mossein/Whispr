@@ -52,6 +52,7 @@ final class KeyMonitor {
             if keyCode == KeyMonitor.rightCommandKeyCode {
                 let flags = event.flags
                 let commandDown = flags.contains(.maskCommand)
+                print("[Whispr] Right Cmd \(commandDown ? "DOWN" : "UP")")
                 DispatchQueue.main.async {
                     if commandDown {
                         monitor.onRightCommandDown?()

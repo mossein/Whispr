@@ -1,9 +1,10 @@
 import SwiftUI
+import AppKit
 
 @main
 struct WhisprApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var appState = AppState.shared
-    private let coordinator = AppCoordinator.shared
 
     var body: some Scene {
         MenuBarExtra {
@@ -12,6 +13,26 @@ struct WhisprApp: App {
         } label: {
             Image(systemName: appState.isRecording ? "mic.fill" : "mic")
         }
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
+        print("[Whispr] App launched")
+
+        // Check accessibility permission
+        let trusted = AXIsProcessTrusted()
+        print("[Whispr] Accessibility trusted: \(trusted)")
+        if !trusted {
+            print("[Whispr] Requesting accessibility access...")
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
+            AXIsProcessTrustedWithOptions(options)
+        }
+
+        // Force coordinator init
+        _ = AppCoordinator.shared
+        print("[Whispr] Coordinator initialized")
     }
 }
 
