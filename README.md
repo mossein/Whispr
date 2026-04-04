@@ -16,14 +16,26 @@ Powered by [WhisperKit](https://github.com/argmaxinc/WhisperKit) for fully local
 - Apple Silicon (M1/M2/M3/M4)
 - ~1-3GB disk space for the Whisper model (downloaded on first launch)
 
-## Build & Run
+## Download
+
+Grab `Whispr-macOS.zip` from [Releases](https://github.com/mossein/Whispr/releases), unzip, and move to Applications.
+
+Since the app isn't code-signed, macOS will block it. Run this once to fix:
+
+```bash
+xattr -cr /Applications/Whispr.app
+```
+
+## Build from source
 
 ```bash
 swift build
 swift run
 ```
 
-On first launch, grant **Accessibility** and **Microphone** permissions when prompted (System Settings > Privacy & Security).
+## Permissions
+
+On first launch, grant **Accessibility** and **Microphone** in System Settings > Privacy & Security.
 
 ## How it's built
 
