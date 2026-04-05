@@ -37,6 +37,16 @@ final class AppCoordinator {
         Task {
             await transcriber.loadModel()
         }
+
+        // Re-register monitors after sleep/wake
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            NSLog("[Whispr] Woke from sleep, restarting monitors")
+            self?.keyMonitor.stop()
+            self?.keyMonitor.start()
+        }
     }
 
     func updateTriggerKey() {
