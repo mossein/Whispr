@@ -3,10 +3,21 @@ import AppKit
 
 @main
 struct WhisprApp: App {
-    @State private var appState = AppState.shared
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
-    init() {
-        NSApp?.setActivationPolicy(.accessory)
+    var body: some Scene {
+        SwiftUI.Settings { EmptyView() }
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var statusItem: NSStatusItem!
+    private var statusMenuItem: NSMenuItem!
+    private var observer: NSObjectProtocol?
+    private var wizard: SetupWizardController?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
 
         let trusted = AXIsProcessTrusted()
         if !trusted {
@@ -14,38 +25,55 @@ struct WhisprApp: App {
             AXIsProcessTrustedWithOptions(options)
         }
 
+        // Create menu bar icon
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        if let button = statusItem.button {
+            button.image = NSImage(systemSymbolName: "mic", accessibilityDescription: "Whispr")
+        }
+
+        statusMenuItem = NSMenuItem(title: "Loading model...", action: nil, keyEquivalent: "")
+
+        let menu = NSMenu()
+        menu.addItem(statusMenuItem)
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Quit Whispr", action: #selector(quit), keyEquivalent: "q"))
+        statusItem.menu = menu
+
         _ = AppCoordinator.shared
+
+        // Show wizard on first launch
+        if !Settings.shared.onboardingCompleted {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.wizard = SetupWizardController()
+                self?.wizard?.show()
+            }
+        }
+
+        // Update menu status when model loads
+        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+            self?.updateStatus()
+            if AppState.shared.isModelLoaded || AppState.shared.lastError != nil {
+                timer.invalidate()
+            }
+        }
+
+        NSLog("[Whispr] App started")
     }
 
-    var body: some Scene {
-        MenuBarExtra {
-            MenuBarView()
-                .environment(appState)
-        } label: {
-            Image(systemName: appState.isRecording ? "mic.fill" : "mic")
+    private func updateStatus() {
+        let state = AppState.shared
+        if state.isModelLoading {
+            statusMenuItem.title = state.modelLoadProgress
+            statusItem.button?.image = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: "Downloading")
+        } else if state.isModelLoaded {
+            statusMenuItem.title = "Ready - Hold \(Settings.shared.triggerKeyName)"
+            statusItem.button?.image = NSImage(systemSymbolName: "mic", accessibilityDescription: "Whispr")
+        } else if let error = state.lastError {
+            statusMenuItem.title = "Error: \(error)"
         }
     }
-}
 
-struct MenuBarView: View {
-    @Environment(AppState.self) private var appState
-
-    var body: some View {
-        if appState.isModelLoading {
-            Text(appState.modelLoadProgress)
-        } else if appState.isModelLoaded {
-            Text("Ready - Hold \(Settings.shared.triggerKeyName)")
-        } else {
-            Text("Loading...")
-        }
-
-        if let error = appState.lastError {
-            Divider()
-            Text(error).foregroundStyle(.red)
-        }
-
-        Divider()
-        Button("Quit") { NSApp?.terminate(nil) }
-            .keyboardShortcut("q")
+    @objc private func quit() {
+        NSApp.terminate(nil)
     }
 }

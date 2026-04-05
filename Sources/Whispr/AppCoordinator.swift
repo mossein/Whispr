@@ -9,7 +9,6 @@ final class AppCoordinator {
     let transcriber = Transcriber()
     private let popup = PopupPanel()
     private let appState = AppState.shared
-    private let onboardingWindow = OnboardingWindow()
 
     private init() {
         setup()
@@ -33,31 +32,32 @@ final class AppCoordinator {
         keyMonitor.triggerKeyCode = Int64(Settings.shared.triggerKeyCode)
         keyMonitor.start()
 
-        // Always load model on launch
-        Task {
-            await transcriber.loadModel()
+        // Load model on launch if onboarding is done (wizard handles it otherwise)
+        if Settings.shared.onboardingCompleted {
+            Task {
+                await transcriber.loadModel()
+            }
         }
 
-        // Re-register monitors after sleep/wake
-        NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didWakeNotification,
-            object: nil, queue: .main
-        ) { [weak self] _ in
-            NSLog("[Whispr] Woke from sleep, restarting monitors")
+        // Re-register monitors after sleep/wake and screen unlock
+        let restartMonitor: (Notification) -> Void = { [weak self] notification in
+            NSLog("[Whispr] Restarting monitors (%@)", notification.name.rawValue)
             self?.keyMonitor.stop()
             self?.keyMonitor.start()
         }
+
+        let wsnc = NSWorkspace.shared.notificationCenter
+        wsnc.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main, using: restartMonitor)
+        wsnc.addObserver(forName: NSWorkspace.sessionDidBecomeActiveNotification, object: nil, queue: .main, using: restartMonitor)
+
+        DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name("com.apple.screenIsUnlocked"),
+            object: nil, queue: .main, using: restartMonitor
+        )
     }
 
     func updateTriggerKey() {
         keyMonitor.triggerKeyCode = Int64(Settings.shared.triggerKeyCode)
-    }
-
-    func showOnboarding() {
-        onboardingWindow.show {
-            // Onboarding completed, update key binding
-            self.updateTriggerKey()
-        }
     }
 
     private func startRecording() {

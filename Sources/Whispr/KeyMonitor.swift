@@ -2,7 +2,8 @@ import Cocoa
 import CoreGraphics
 
 final class KeyMonitor {
-    private var flagsMonitor: Any?
+    private var globalMonitor: Any?
+    private var localMonitor: Any?
     private var isKeyDown = false
 
     var onRightCommandDown: (() -> Void)?
@@ -11,18 +12,18 @@ final class KeyMonitor {
     var triggerKeyCode: Int64 = 0x36
 
     func start() {
-        // Use both local and global monitors for full coverage
-        flagsMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+        stop() // Clean up any existing monitors first
+
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             self?.handleFlags(event)
         }
 
-        // Also monitor locally (when our own windows are focused)
-        NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             self?.handleFlags(event)
             return event
         }
 
-        NSLog("[Whispr] Key monitor started (NSEvent)")
+        NSLog("[Whispr] Key monitor started")
     }
 
     private func handleFlags(_ event: NSEvent) {
@@ -43,9 +44,14 @@ final class KeyMonitor {
     }
 
     func stop() {
-        if let monitor = flagsMonitor {
+        if let monitor = globalMonitor {
             NSEvent.removeMonitor(monitor)
-            flagsMonitor = nil
+            globalMonitor = nil
         }
+        if let monitor = localMonitor {
+            NSEvent.removeMonitor(monitor)
+            localMonitor = nil
+        }
+        isKeyDown = false
     }
 }
