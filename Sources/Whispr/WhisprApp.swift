@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusMenuItem: NSMenuItem!
     private var observer: NSObjectProtocol?
     private var wizard: SetupWizardController?
+    private var settingsWindow: SettingsWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -36,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(statusMenuItem)
         menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem(title: "Quit Whispr", action: #selector(quit), keyEquivalent: "q"))
         statusItem.menu = menu
 
@@ -71,6 +73,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else if let error = state.lastError {
             statusMenuItem.title = "Error: \(error)"
         }
+    }
+
+    @objc private func openSettings() {
+        if settingsWindow == nil {
+            settingsWindow = SettingsWindowController()
+        }
+        settingsWindow?.show()
     }
 
     @objc private func quit() {

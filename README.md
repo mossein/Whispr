@@ -14,12 +14,17 @@ Powered by [WhisperKit](https://github.com/argmaxinc/WhisperKit) for fully local
 2. Speak
 3. Release - transcribed text is pasted into the focused app
 
-## Download
+## Install
 
-Grab `Whispr-macOS.zip` from [Releases](https://github.com/mossein/Whispr/releases).
+```bash
+brew tap mossein/whispr
+brew install --cask whispr
+```
+
+Or download `Whispr-macOS.zip` from [Releases](https://github.com/mossein/Whispr/releases).
 
 On first launch, grant **Accessibility** and **Microphone** permissions when prompted.
-The speech model (~145 MB) downloads automatically on first use.
+The speech model downloads automatically on first use.
 
 ## Build from source
 
